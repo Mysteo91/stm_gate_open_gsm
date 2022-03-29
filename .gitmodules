@@ -1,3 +1,6 @@
 [submodule "arbina-hardware-gsm"]
 	path = arbina-hardware-gsm
 	url = https://github.com/ArbinaHQ/arbina-hardware-gsm
+[submodule "SIM800MQTT"]
+	path = SIM800MQTT
+	url = https://github.com/leech001/SIM800MQTT

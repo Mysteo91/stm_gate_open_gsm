@@ -1,0 +1,3 @@
+[submodule "arbina-hardware-gsm"]
+	path = arbina-hardware-gsm
+	url = https://github.com/ArbinaHQ/arbina-hardware-gsm

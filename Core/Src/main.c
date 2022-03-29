@@ -98,7 +98,7 @@ int main(void)
     HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
     HAL_UART_Transmit(&huart1, (uint8_t*)"AT\r\n", 4, 100);
     uint8_t data[8];
-    HAL_UART_Receive(&huart1, data, 6, 100);
+    HAL_UART_Receive(&huart1, data, 8, 100);
     HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
     

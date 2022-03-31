@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include "MQTTSim800.h"
 #include <stdlib.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -94,8 +95,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
   MX_DMA_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
     SIM800.sim.apn = "internet.mts.ru";
     SIM800.sim.apn_user = "";
@@ -121,6 +122,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+
+
       if (SIM800.mqttServer.connect == 0) {
           MQTT_Init();
           sub = 0;
@@ -131,18 +135,39 @@ int main(void)
               sub = 1;
           }
 
-          MQTT_Pub("STM32/string", "string");
-          MQTT_PubUint8("STM32/uint8", pub_uint8);
-          MQTT_PubUint16("STM32/uint16", pub_uint16);
-          MQTT_PubUint32("STM32/uint32", pub_uint32);
-          MQTT_PubFloat("STM32/float", pub_float);
-          MQTT_PubDouble("STM32/double", pub_double);
+          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 0) {
+              if (SIM800.RI_time_ms - HAL_GetTick() > 150) {
+                  SIM800_SendCommand("+++", "CONNECT", 2000);
+                  while (SIM800.answer == 0) {
 
+                  }
+                  SIM800_SendCommand("ATH\r\n", "", 2000);
+                  SIM800_SendCommand("ATO\r\n", "", 2000);
+              }
+          }
+          else
+          {
+              MQTT_Pub("STM32/string", "string");
+              MQTT_PubUint8("STM32/uint8", pub_uint8);
+              MQTT_PubUint16("STM32/uint16", pub_uint16);
+              MQTT_PubUint32("STM32/uint32", pub_uint32);
+              MQTT_PubFloat("STM32/float", pub_float);
+              MQTT_PubDouble("STM32/double", pub_double);
+          }
           if(SIM800.mqttReceive.newEvent) {
               unsigned char *topic = SIM800.mqttReceive.topic;
-              int payload = atoi(SIM800.mqttReceive.payload);
+              uint8_t *payload = SIM800.mqttReceive.payload;
+              if (strstr(payload, "ON1") != NULL)
+              {
+                  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+              }
+              else if (strstr(payload, "ON2") != NULL)
+              {
+                  __NOP();
+              }
               SIM800.mqttReceive.newEvent = 0;
           }
+          HAL_Delay(500);
       }
     /* USER CODE END WHILE */
 

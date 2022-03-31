@@ -18,11 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MQTTSim800.h"
+#include <stdlib.h>
 
 /* USER CODE END Includes */
 
@@ -43,7 +46,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+SIM800_t SIM800;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,7 +57,13 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    if (huart == UART_SIM800) {
+        Sim800_RxCallBack(Size);
+    }
+}
+uint8_t buf[256];
+HAL_StatusTypeDef state ;
 /* USER CODE END 0 */
 
 /**
@@ -84,21 +93,60 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  //MX_GPIO_Init();
-  //MX_USART1_UART_Init();
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+    SIM800.sim.apn = "internet.mts.ru";
+    SIM800.sim.apn_user = "";
+    SIM800.sim.apn_pass = "";
+    SIM800.mqttServer.host = "space.arbina.com";
+    SIM800.mqttServer.port = 1883;
+    SIM800.mqttClient.username = "jackson";
+    SIM800.mqttClient.pass = "Amymezyry4235";
+    SIM800.mqttClient.clientID = "TestSub";
+    SIM800.mqttClient.keepAliveInterval = 120;
+    MQTT_Init();
+    uint8_t sub = 0;
+
+    //Test data
+    uint8_t pub_uint8 = 1;
+    uint16_t pub_uint16 = 2;
+    uint32_t pub_uint32 = 3;
+    float pub_float = 1.1;
+    double pub_double = 2.2;
   /* USER CODE END 2 */
 
   /* Infinite loop */
+
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+      if (SIM800.mqttServer.connect == 0) {
+          MQTT_Init();
+          sub = 0;
+      }
+      if (SIM800.mqttServer.connect == 1) {
+          if(sub == 0){
+              MQTT_Sub("test");
+              sub = 1;
+          }
+
+          MQTT_Pub("STM32/string", "string");
+          MQTT_PubUint8("STM32/uint8", pub_uint8);
+          MQTT_PubUint16("STM32/uint16", pub_uint16);
+          MQTT_PubUint32("STM32/uint32", pub_uint32);
+          MQTT_PubFloat("STM32/float", pub_float);
+          MQTT_PubDouble("STM32/double", pub_double);
+
+          if(SIM800.mqttReceive.newEvent) {
+              unsigned char *topic = SIM800.mqttReceive.topic;
+              int payload = atoi(SIM800.mqttReceive.payload);
+              SIM800.mqttReceive.newEvent = 0;
+          }
+      }
     /* USER CODE END WHILE */
-    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-    HAL_UART_Transmit(&huart1, (uint8_t*)"AT\r\n", 4, 100);
-    uint8_t data[8];
-    HAL_UART_Receive(&huart1, data, 8, 100);
-    HAL_Delay(1000);
+
     /* USER CODE BEGIN 3 */
     
   }

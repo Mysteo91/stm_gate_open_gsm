@@ -94,8 +94,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USART1_UART_Init();
+  MX_DMA_Init();
   /* USER CODE BEGIN 2 */
     SIM800.sim.apn = "internet.mts.ru";
     SIM800.sim.apn_user = "";
@@ -118,7 +118,6 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Infinite loop */
-
   /* USER CODE BEGIN WHILE */
   while (1)
   {

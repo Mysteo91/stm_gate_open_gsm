@@ -48,6 +48,8 @@
 
 /* USER CODE BEGIN PV */
 SIM800_t SIM800;
+uint8_t but1 = 0;
+uint8_t but2 = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -135,8 +137,10 @@ int main(void)
               sub = 1;
           }
 
-          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 0) {
-              if (SIM800.RI_time_ms - HAL_GetTick() > 150) {
+          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 0)
+          {
+              if (SIM800.RI_time_ms - HAL_GetTick() > 150)
+              {
                   SIM800_SendCommand("+++", "CONNECT", 2000);
                   while (SIM800.answer == 0) {
 
@@ -145,29 +149,36 @@ int main(void)
                   SIM800_SendCommand("ATO\r\n", "", 2000);
               }
           }
+          if (SIM800.newSMS == 1)
+          {
+              SIM800.newSMS = 0;
+
+          }
           else
           {
-              MQTT_Pub("STM32/string", "string");
+/*              MQTT_Pub("STM32/string", "string");
               MQTT_PubUint8("STM32/uint8", pub_uint8);
               MQTT_PubUint16("STM32/uint16", pub_uint16);
               MQTT_PubUint32("STM32/uint32", pub_uint32);
               MQTT_PubFloat("STM32/float", pub_float);
-              MQTT_PubDouble("STM32/double", pub_double);
+              MQTT_PubDouble("STM32/double", pub_double);*/
           }
           if(SIM800.mqttReceive.newEvent) {
-              unsigned char *topic = SIM800.mqttReceive.topic;
               uint8_t *payload = SIM800.mqttReceive.payload;
               if (strstr(payload, "ON1") != NULL)
               {
-                  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+                  HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_SET);
+                  HAL_Delay(1000);
+                  HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_RESET);
               }
               else if (strstr(payload, "ON2") != NULL)
               {
-                  __NOP();
+                  HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_SET);
+                  HAL_Delay(1000);
+                  HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_RESET);
               }
               SIM800.mqttReceive.newEvent = 0;
           }
-          HAL_Delay(500);
       }
     /* USER CODE END WHILE */
 

@@ -27,6 +27,7 @@
 #include "MQTTSim800.h"
 #include <stdlib.h>
 #include <string.h>
+#include "SIM800c.h"
 
 /* USER CODE END Includes */
 
@@ -66,7 +67,11 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     }
 }
 uint8_t buf[256];
+uint8_t* host = "space.arbina.com";
+uint8_t* user = "jackson";
+uint8_t* pass = "Amymezyry4235";
 HAL_StatusTypeDef state ;
+uint32_t tickMsWaiting;
 /* USER CODE END 0 */
 
 /**
@@ -103,10 +108,10 @@ int main(void)
     SIM800.sim.apn = "internet.mts.ru";
     SIM800.sim.apn_user = "";
     SIM800.sim.apn_pass = "";
-    SIM800.mqttServer.host = "space.arbina.com";
+    memcpy(SIM800.mqttServer.host, host, strlen(host) );
     SIM800.mqttServer.port = 1883;
-    SIM800.mqttClient.username = "jackson";
-    SIM800.mqttClient.pass = "Amymezyry4235";
+    memcpy(SIM800.mqttClient.username, user, strlen(user) );
+    memcpy(SIM800.mqttClient.pass, pass, strlen(pass) );
     SIM800.mqttClient.clientID = "TestSub";
     SIM800.mqttClient.keepAliveInterval = 120;
     MQTT_Init();
@@ -125,6 +130,50 @@ int main(void)
   while (1)
   {
 
+      if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 0)
+      {
+          if ( HAL_GetTick() - SIM800.RI_time_ms > 150)
+          {
+              if (SIM800.mqttServer.connect == 1)
+              {
+                  SIM800.mqttServer.connect = 0;
+                  SIM800_SendCommand("+++", "OK", 2000);
+                  while (SIM800.answer == 0)
+                  {
+
+                  }
+
+              }
+
+              SIM800_SendCommand("ATH\r\n", "", 2000);
+              SIM800_SendCommand("ATO\r\n", "", 2000);
+              SIM800.mqttServer.connect = 1;
+          }
+      }
+      if (SIM800.newSMS == 1)
+      {
+          if (SIM800.mqttServer.connect == 1)
+          {
+              SIM800.mqttServer.connect = 0;
+              SIM800_SendCommand("+++", "OK", 2000);
+              while (SIM800.answer == 0)
+              {
+
+              }
+          }
+          uint8_t oldNUm = SIM800.smsNumber;
+          uint8_t num = found_sms();
+          if (oldNUm != 0 && (oldNUm != num && num != 0))
+          {
+              HAL_NVIC_SystemReset();
+          }
+          SIM800_SendCommand("ATH\r\n", "", 2000);
+          SIM800_SendCommand("ATO\r\n", "", 2000);
+          SIM800.mqttServer.connect = 1;
+          SIM800.newSMS = 0;
+
+
+      }
 
 
       if (SIM800.mqttServer.connect == 0) {
@@ -133,51 +182,46 @@ int main(void)
       }
       if (SIM800.mqttServer.connect == 1) {
           if(sub == 0){
-              MQTT_Sub("test");
+              MQTT_Sub("homeassistant/gate2/status");
+              MQTT_Sub("homeassistant/gate2/key1");
+              MQTT_Sub("homeassistant/gate2/key2");
               sub = 1;
           }
 
-          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 0)
-          {
-              if (SIM800.RI_time_ms - HAL_GetTick() > 150)
-              {
-                  SIM800_SendCommand("+++", "CONNECT", 2000);
-                  while (SIM800.answer == 0) {
 
-                  }
-                  SIM800_SendCommand("ATH\r\n", "", 2000);
-                  SIM800_SendCommand("ATO\r\n", "", 2000);
-              }
-          }
-          if (SIM800.newSMS == 1)
-          {
-              SIM800.newSMS = 0;
 
-          }
-          else
+
+
+          if(SIM800.mqttReceive.newEvent)
           {
-/*              MQTT_Pub("STM32/string", "string");
-              MQTT_PubUint8("STM32/uint8", pub_uint8);
-              MQTT_PubUint16("STM32/uint16", pub_uint16);
-              MQTT_PubUint32("STM32/uint32", pub_uint32);
-              MQTT_PubFloat("STM32/float", pub_float);
-              MQTT_PubDouble("STM32/double", pub_double);*/
-          }
-          if(SIM800.mqttReceive.newEvent) {
               uint8_t *payload = SIM800.mqttReceive.payload;
-              if (strstr(payload, "ON1") != NULL)
+              if (strstr(SIM800.mqttReceive.topic, "key1") != NULL)
               {
-                  HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_SET);
-                  HAL_Delay(1000);
-                  HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_RESET);
+                  if (strstr(payload, "ON") != NULL)
+                  {
+                      HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_SET);
+                      HAL_Delay(1000);
+                      HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_RESET);
+                  }
+
               }
-              else if (strstr(payload, "ON2") != NULL)
+              else if (strstr(SIM800.mqttReceive.topic, "key2") != NULL)
               {
-                  HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_SET);
-                  HAL_Delay(1000);
-                  HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_RESET);
+                  if (strstr(payload, "ON") != NULL)
+                  {
+                      HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_SET);
+                      HAL_Delay(1000);
+                      HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_RESET);
+                  }
+
               }
               SIM800.mqttReceive.newEvent = 0;
+          }
+          uint32_t tickMs = HAL_GetTick();
+          if (tickMs - tickMsWaiting > 5000)
+          {
+              tickMsWaiting = tickMs;
+              MQTT_Pub("homeassistant/gate2/status", "online");
           }
       }
     /* USER CODE END WHILE */

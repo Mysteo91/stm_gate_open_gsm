@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dma.h"
+#include "iwdg.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -95,16 +96,24 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
-
   /* USER CODE BEGIN SysInit */
+    MX_IWDG_Init();
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST) != RESET)
+    {
+        /* IWDGRST flag set: Turn LED1 on */
 
+        /* Clear reset flags */
+        __HAL_RCC_CLEAR_RESET_FLAGS();
+    }
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART1_UART_Init();
+
   /* USER CODE BEGIN 2 */
+  HAL_Delay(5000);
     SIM800.sim.apn = "internet.mts.ru";
     SIM800.sim.apn_user = "";
     SIM800.sim.apn_pass = "";
@@ -185,6 +194,7 @@ int main(void)
               MQTT_Sub("homeassistant/gate2/status");
               MQTT_Sub("homeassistant/gate2/key1");
               MQTT_Sub("homeassistant/gate2/key2");
+              HAL_IWDG_Refresh(&hiwdg);
               sub = 1;
           }
 
@@ -194,13 +204,16 @@ int main(void)
 
           if(SIM800.mqttReceive.newEvent)
           {
+              HAL_IWDG_Refresh(&hiwdg);
               uint8_t *payload = SIM800.mqttReceive.payload;
               if (strstr(SIM800.mqttReceive.topic, "key1") != NULL)
               {
                   if (strstr(payload, "ON") != NULL)
                   {
                       HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_SET);
+                      MQTT_Pub("homeassistant/gate2/key1", "push");
                       HAL_Delay(1000);
+                      MQTT_Pub("homeassistant/gate2/key1", "unpush");
                       HAL_GPIO_WritePin(BUTTON1_GPIO_Port, BUTTON1_Pin, GPIO_PIN_RESET);
                   }
 
@@ -210,15 +223,22 @@ int main(void)
                   if (strstr(payload, "ON") != NULL)
                   {
                       HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_SET);
+                      MQTT_Pub("homeassistant/gate2/key2", "push");
                       HAL_Delay(1000);
                       HAL_GPIO_WritePin(BUTTON2_GPIO_Port, BUTTON2_Pin, GPIO_PIN_RESET);
+                      MQTT_Pub("homeassistant/gate2/key2", "unpush");
+
                   }
+
+              }
+              else if (strstr(SIM800.mqttReceive.topic, "status") != NULL)
+              {
 
               }
               SIM800.mqttReceive.newEvent = 0;
           }
           uint32_t tickMs = HAL_GetTick();
-          if (tickMs - tickMsWaiting > 5000)
+          if (tickMs - tickMsWaiting > 2000)
           {
               tickMsWaiting = tickMs;
               MQTT_Pub("homeassistant/gate2/status", "online");
@@ -244,9 +264,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {

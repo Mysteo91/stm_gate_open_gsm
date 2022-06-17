@@ -126,12 +126,7 @@ int main(void)
     MQTT_Init();
     uint8_t sub = 0;
 
-    //Test data
-    uint8_t pub_uint8 = 1;
-    uint16_t pub_uint16 = 2;
-    uint32_t pub_uint32 = 3;
-    float pub_float = 1.1;
-    double pub_double = 2.2;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
